@@ -11,6 +11,7 @@ View 14-day views, clones, referrers, and popular paths for **all** your reposit
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-ff4b4b)](https://streamlit.io/)
+[![GitHub Stars](https://img.shields.io/github/stars/ameyac11/github-traffic-viewer?style=social)](https://github.com/ameyac11/github-traffic-viewer/stargazers)
 
 **🔴 Try the live demo:** [git-traffic-viewer.streamlit.app](https://git-traffic-viewer.streamlit.app/)
 
@@ -36,8 +37,8 @@ View 14-day views, clones, referrers, and popular paths for **all** your reposit
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/GitHub_Traffic.git
-cd GitHub_Traffic
+git clone https://github.com/ameyac11/github-traffic-viewer.git
+cd github-traffic-viewer
 ```
 
 ### 2. Create a Virtual Environment (Recommended)
@@ -168,6 +169,12 @@ GitHub_Traffic/
 - **Python 3.10+**
 - A GitHub account with at least one repository
 - A GitHub Personal Access Token with the `repo` scope
+
+---
+
+## 🌟 Show Your Support
+
+If you find this project useful, please consider giving it a ⭐ on [GitHub](https://github.com/ameyac11/github-traffic-viewer)! It helps more people discover the tool.
 
 ---
 
