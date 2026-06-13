@@ -433,11 +433,7 @@ hr { border: none; border-top: 1px solid #21262d; margin: 1rem 0; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown(f"""
-<a href="{GITHUB_REPO}" target="_blank" rel="noopener noreferrer" class="github-corner-btn">
-    {GITHUB_LOGO}<span>Star on GitHub</span>
-</a>
-""", unsafe_allow_html=True)
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
