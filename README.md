@@ -16,7 +16,7 @@ Please consider giving this project a ⭐ if you find it helpful!
 
 ---
 
-**🔴 Try the live demo:** [git-traffic-dashboard.streamlit.app](https://git-traffic-dashboard.streamlit.app/)
+**🔴 Try the live demo:** [git-traffic-monitor.streamlit.app](https://git-traffic-monitor.streamlit.app/)
 
 A local-only GitHub traffic analytics tool with two modes:
 - **🖥️ Web UI** — Beautiful Streamlit dashboard (recommended)
