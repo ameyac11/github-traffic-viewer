@@ -1,3 +1,5 @@
+
+
 """
 streamlit_app.py
 Frontend only — all logic imported from github_traffic_fetch.py.
@@ -523,10 +525,23 @@ DEFAULTS = {
     "fetched":       False,
     "_is_fetching":   False,
     "repo_filter":   "",
+    "landing_mode":  "Live API Fetch",
+    "top_n_slider":   10,
 }
 for key, val in DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = val
+
+
+def _reset_session_state() -> None:
+    """Return the dashboard to its logged-out defaults without wiping widget state wholesale."""
+    for key, val in DEFAULTS.items():
+        st.session_state[key] = val
+
+
+def _repo_short_name(repo_name: str) -> str:
+    """Return a safe display name for a repository."""
+    return repo_name.rsplit("/", 1)[-1] if repo_name else "Repository"
 
 
 
@@ -579,16 +594,19 @@ def _render_dashboard_toolbar(df: pd.DataFrame | None) -> tuple[str, int]:
         with slider_col:
             st.markdown('<p class="toolbar-label">Top N</p>', unsafe_allow_html=True)
             if df is not None and not df.empty:
+                _slider_max = max(1, min(30, len(df)))
+                _slider_min = min(1, _slider_max)
+                _slider_def = min(10, _slider_max)
                 top_n = st.slider(
                     "Show top N",
-                    5, min(30, len(df)), min(10, len(df)),
+                    _slider_min, _slider_max, _slider_def,
                     key="top_n_slider", label_visibility="collapsed",
                 )
             else:
-                top_n = 10
+                top_n = st.session_state.get("top_n_slider", 10)
                 st.slider(
                     "Show top N",
-                    5, 30, 10,
+                    1, 30, top_n,
                     key="top_n_slider", label_visibility="collapsed", disabled=True,
                 )
 
@@ -612,7 +630,7 @@ def _render_dashboard_toolbar(df: pd.DataFrame | None) -> tuple[str, int]:
 
         with logout_col:
             def _logout_cb():
-                st.session_state.clear()
+                _reset_session_state()
             st.button("Logout", key="logout_btn", on_click=_logout_cb, use_container_width=True)
 
     return search, top_n
@@ -644,6 +662,50 @@ DISPLAY_COLS = [
     "Total Views", "Unique Visitors", "Total Clones", "Unique Cloners",
     "Top Referrer", "Top Referrer Views", "Top Path", "Top Path Views",
 ]
+
+
+def _normalize_dashboard_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Ensure the dashboard always receives the columns it expects."""
+    normalized = frame.copy()
+    defaults = {
+        "Repository": "",
+        "Private": False,
+        "Stars": 0,
+        "Forks": 0,
+        "Total Views": 0,
+        "Unique Visitors": 0,
+        "Total Clones": 0,
+        "Unique Cloners": 0,
+        "Top Referrer": "",
+        "Top Referrer Views": 0,
+        "Top Path": "",
+        "Top Path Views": 0,
+        "_daily_views": [],
+        "_daily_clones": [],
+        "_referrers": [],
+        "_paths": [],
+    }
+    for column, default_value in defaults.items():
+        if column not in normalized.columns:
+            normalized[column] = default_value
+
+    normalized["Repository"] = normalized["Repository"].fillna("").astype(str)
+    normalized["Private"] = normalized["Private"].fillna(False).astype(bool)
+
+    numeric_cols = [
+        "Stars",
+        "Forks",
+        "Total Views",
+        "Unique Visitors",
+        "Total Clones",
+        "Unique Cloners",
+        "Top Referrer Views",
+        "Top Path Views",
+    ]
+    for column in numeric_cols:
+        normalized[column] = pd.to_numeric(normalized[column], errors="coerce").replace([float("inf"), float("-inf")], 0).fillna(0)
+
+    return normalized
 
 
 def _search_filter_frame(frame: pd.DataFrame, query: str) -> pd.DataFrame:
@@ -692,22 +754,17 @@ def _prepare_daily_chart_frame(entries: list[dict], value_labels: dict[str, str]
     return chart_frame if not chart_frame.empty else None
 
 
+def _safe_max(series: pd.Series) -> int:
+    """Helper to safely compute max value for ProgressColumn without causing Infinity/NaN crashes."""
+    val = series.max()
+    if not pd.notna(val) or val == float("inf") or val <= 0:
+        return 1
+    return int(val)
+
+
 def _render_dashboard_content(df: pd.DataFrame, search: str, top_n: int) -> None:
     """Render metrics, charts, tables, and repo detail for the current filter."""
-    active_df = _search_filter_frame(df, search)
-    numeric_cols = [
-        "Stars",
-        "Forks",
-        "Total Views",
-        "Unique Visitors",
-        "Total Clones",
-        "Unique Cloners",
-        "Top Referrer Views",
-        "Top Path Views",
-    ]
-    for column in numeric_cols:
-        if column in active_df.columns:
-            active_df[column] = pd.to_numeric(active_df[column], errors="coerce").replace([float("inf"), float("-inf")], 0).fillna(0)
+    active_df = _normalize_dashboard_frame(_search_filter_frame(df, search))
 
     st.markdown("<p style='font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#8b949e;margin:0.5rem 0 0.5rem 0;'>Overview — Last 14 Days</p>", unsafe_allow_html=True)
 
@@ -754,24 +811,42 @@ def _render_dashboard_content(df: pd.DataFrame, search: str, top_n: int) -> None
         with st.container(border=True):
             st.markdown("<h4 style='color:#e6edf3;margin:0 0 1rem 0;font-size:0.95rem;font-weight:600;'>👁️ Top Repositories by Views</h4>", unsafe_allow_html=True)
             top_v = _prepare_ranked_chart_frame(active_df, "Total Views", top_n).set_index("_short")[["Total Views", "Unique Visitors"]]
-            st.bar_chart(top_v, color=["#58a6ff", "#3fb950"])
+            max_val = top_v["Total Views"].max() if not top_v.empty else 0
+            if not top_v.empty and pd.notna(max_val) and max_val > 0 and max_val != float("inf"):
+                st.bar_chart(top_v, color=["#58a6ff", "#3fb950"])
+            else:
+                st.info("No data to display.", icon="📊")
 
     with col2:
         with st.container(border=True):
             st.markdown("<h4 style='color:#e6edf3;margin:0 0 1rem 0;font-size:0.95rem;font-weight:600;'>📥 Top Repositories by Clones</h4>", unsafe_allow_html=True)
             top_c = _prepare_ranked_chart_frame(active_df, "Total Clones", top_n).set_index("_short")[["Total Clones", "Unique Cloners"]]
-            st.bar_chart(top_c, color=["#ff7b72", "#e3b341"])
+            max_val = top_c["Total Clones"].max() if not top_c.empty else 0
+            if not top_c.empty and pd.notna(max_val) and max_val > 0 and max_val != float("inf"):
+                st.bar_chart(top_c, color=["#ff7b72", "#e3b341"])
+            else:
+                st.info("No data to display.", icon="📊")
 
     col3, col4 = st.columns(2)
     with col3:
         with st.container(border=True):
             st.markdown("<h4 style='color:#e6edf3;margin:0 0 1rem 0;font-size:0.95rem;font-weight:600;'>⭐ Most Starred</h4>", unsafe_allow_html=True)
-            st.bar_chart(_prepare_ranked_chart_frame(active_df, "Stars", top_n).set_index("_short")[["Stars"]], color=["#e3b341"])
+            top_s = _prepare_ranked_chart_frame(active_df, "Stars", top_n).set_index("_short")[["Stars"]]
+            max_val = top_s["Stars"].max() if not top_s.empty else 0
+            if not top_s.empty and pd.notna(max_val) and max_val > 0 and max_val != float("inf"):
+                st.bar_chart(top_s, color="#e3b341")
+            else:
+                st.info("No data to display.", icon="📊")
 
     with col4:
         with st.container(border=True):
             st.markdown("<h4 style='color:#e6edf3;margin:0 0 1rem 0;font-size:0.95rem;font-weight:600;'>🍴 Most Forked</h4>", unsafe_allow_html=True)
-            st.bar_chart(_prepare_ranked_chart_frame(active_df, "Forks", top_n).set_index("_short")[["Forks"]], color=["#a371f7"])
+            top_f = _prepare_ranked_chart_frame(active_df, "Forks", top_n).set_index("_short")[["Forks"]]
+            max_val = top_f["Forks"].max() if not top_f.empty else 0
+            if not top_f.empty and pd.notna(max_val) and max_val > 0 and max_val != float("inf"):
+                st.bar_chart(top_f, color="#a371f7")
+            else:
+                st.info("No data to display.", icon="📊")
 
     st.markdown("<p style='font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#8b949e;margin:2rem 0 0.75rem 0;'>All Repositories</p>", unsafe_allow_html=True)
 
@@ -790,9 +865,9 @@ def _render_dashboard_content(df: pd.DataFrame, search: str, top_n: int) -> None
             "Private":            st.column_config.CheckboxColumn("Private", help="Is the repository private?"),
             "Stars":              st.column_config.NumberColumn("Stars ⭐", format="%d"),
             "Forks":              st.column_config.NumberColumn("Forks 🍴", format="%d"),
-            "Total Views":        st.column_config.ProgressColumn("Views", format="%d", min_value=0, max_value=int(active_df["Total Views"].max()) if not active_df.empty else 1),
+            "Total Views":        st.column_config.ProgressColumn("Views", format="%d", min_value=0, max_value=_safe_max(active_df["Total Views"]) if not active_df.empty else 1),
             "Unique Visitors":    st.column_config.NumberColumn("Visitors 👥", format="%d"),
-            "Total Clones":       st.column_config.ProgressColumn("Clones", format="%d", min_value=0, max_value=int(active_df["Total Clones"].max()) if not active_df.empty else 1),
+            "Total Clones":       st.column_config.ProgressColumn("Clones", format="%d", min_value=0, max_value=_safe_max(active_df["Total Clones"]) if not active_df.empty else 1),
             "Unique Cloners":     st.column_config.NumberColumn("Cloners 👥", format="%d"),
             "Top Referrer":       st.column_config.TextColumn("Top Referrer"),
             "Top Referrer Views": st.column_config.NumberColumn("Referrer Views", format="%d"),
@@ -815,7 +890,7 @@ def _render_dashboard_content(df: pd.DataFrame, search: str, top_n: int) -> None
         is_private  = row["Private"]
         vis_label   = "🔒 Private" if is_private else "🌐 Public"
         vis_color   = "#f78166"    if is_private else "#3fb950"
-        label = f"{row['Repository'].split('/')[1]}  ·  {int(row['Total Views']):,} views  ·  {int(row['Total Clones']):,} clones"
+        label = f"{_repo_short_name(str(row['Repository']))}  ·  {int(row['Total Views']):,} views  ·  {int(row['Total Clones']):,} clones"
 
         with st.expander(label):
             st.markdown(f"""
@@ -1147,31 +1222,20 @@ CSV processed locally. No data is stored or uploaded.
     st.stop()
 
 
-# ── Fetch first — no sidebar so we can show user avatar in center ──────────────
-if not st.session_state.fetched or st.session_state.df is None:
-    _, center_col, _ = st.columns([1, 1.5, 1])
-    with center_col:
-        st.markdown(f"""
-        <div style="text-align:center; padding-top: 1.5rem; margin-bottom: 1.5rem;">
-            <img src="{st.session_state.avatar_url}" width="80" style="border-radius:50%;border:3px solid #30363d;margin-bottom:1rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
-            <h2 style="color:#e6edf3;margin:0 0 0.25rem 0;">Welcome, {st.session_state.name}!</h2>
-            <p style="color:#8b949e;font-size:0.9rem;margin:0;">@{st.session_state.username}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        _fetch_traffic_data()
-    st.stop()
-
-
 # ── Full dashboard after data is loaded ───────────────────────────────────────
 st.markdown("<style>[data-testid='stSidebar'] {display: none !important;} [data-testid='collapsedControl'] {display: none !important;}</style>", unsafe_allow_html=True)
 
 _render_dashboard_hero()
 
-df = st.session_state.df
-if df is None or df.empty:
-    st.warning("No repositories found, or no traffic data available for this token.")
-    st.stop()
+try:
+    df = st.session_state.df
+    if df is None or df.empty:
+        st.warning("No repositories found, or no traffic data available for this token.")
+        st.stop()
 
-search, top_n = _render_dashboard_toolbar(df)
-_render_dashboard_content(df, search, top_n)
+    search, top_n = _render_dashboard_toolbar(df)
+    _render_dashboard_content(df, search, top_n)
+except Exception as exc:
+    st.error("The dashboard hit an unexpected render error. Please refresh and try again.")
+    st.exception(exc)
+

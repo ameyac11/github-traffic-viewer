@@ -11,7 +11,6 @@ import sys
 import requests
 import pandas as pd
 from datetime import datetime, timezone
-from dotenv import load_dotenv
 
 # GitHub API base URL
 BASE = "https://api.github.com"

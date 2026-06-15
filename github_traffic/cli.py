@@ -2,7 +2,6 @@ import argparse
 import sys
 import os
 import csv
-from dotenv import load_dotenv
 
 from github_traffic.core import (
     validate_token, 
@@ -86,8 +85,6 @@ def main():
     if not args.command:
         parser.print_help()
         sys.exit(1)
-
-    load_dotenv()
     
     if args.command == "dashboard":
         print("Starting Streamlit Dashboard...")
@@ -99,7 +96,7 @@ def main():
     token = args.token or os.environ.get("GITHUB_TOKEN")
     if not token:
         print("  ❌  No token found.")
-        print("      Use --token or set GITHUB_TOKEN in .env")
+        print("      Use --token or set GITHUB_TOKEN environment variable")
         sys.exit(1)
 
     if args.command == "sync":
