@@ -160,6 +160,32 @@ def build_react_payload(df: pd.DataFrame) -> list:
                 "uniques": int(row.get("unique_cloners", 0))
             })
             
+        import json
+        import ast
+        def parse_raw(val):
+            if isinstance(val, str) and val.strip() != "":
+                try:
+                    return json.loads(val)
+                except Exception:
+                    try:
+                        return ast.literal_eval(val)
+                    except Exception:
+                        return []
+            if isinstance(val, list):
+                return val
+            return []
+
+        raw_refs = group["_raw_referrers"].iloc[0] if "_raw_referrers" in group.columns else None
+        raw_paths = group["_raw_paths"].iloc[0] if "_raw_paths" in group.columns else None
+        
+        full_refs = parse_raw(raw_refs)
+        full_paths = parse_raw(raw_paths)
+        
+        if not full_refs and top_ref:
+            full_refs = [{"referrer": top_ref, "count": top_ref_views, "uniques": top_ref_uniques}]
+        if not full_paths and top_path:
+            full_paths = [{"path": top_path, "title": top_path, "count": top_path_views, "uniques": top_path_uniques}]
+            
         repos.append({
             "repository": repo,
             "is_private": r_is_private,
@@ -177,8 +203,8 @@ def build_react_payload(df: pd.DataFrame) -> list:
             "top_path_uniques": top_path_uniques,
             "_daily_views": daily_views,
             "_daily_clones": daily_clones,
-            "_referrers": [{"referrer": top_ref, "count": top_ref_views, "uniques": top_ref_uniques}] if top_ref else [],
-            "_paths": [{"path": top_path, "title": top_path, "count": top_path_views, "uniques": top_path_uniques}] if top_path else []
+            "_referrers": full_refs,
+            "_paths": full_paths
         })
         
     return repos

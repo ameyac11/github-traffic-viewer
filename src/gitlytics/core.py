@@ -128,6 +128,7 @@ def build_tidy_rows(repo: dict, traffic: dict) -> list[dict]:
     top_path_uniques = paths[0].get("uniques", 0) if paths else 0
     
     rows = []
+    import json
     for day in padded:
         rows.append({
             "date": day["date"],
@@ -144,7 +145,9 @@ def build_tidy_rows(repo: dict, traffic: dict) -> list[dict]:
             "top_referrer_uniques": top_ref_uniques,
             "top_path": top_path,
             "top_path_views": top_path_views,
-            "top_path_uniques": top_path_uniques
+            "top_path_uniques": top_path_uniques,
+            "_raw_referrers": json.dumps(refs),
+            "_raw_paths": json.dumps(paths)
         })
     return rows
 
