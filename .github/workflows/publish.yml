@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     # REQUIRED for Trusted Publishing
     permissions:
       id-token: write
