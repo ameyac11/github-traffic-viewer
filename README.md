@@ -24,12 +24,11 @@ Please consider giving this project a ⭐ if you find it helpful!
 ---
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/gitlytics_thumbnail_1.png" width="48%" />
-  <img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/gitlytics_thumbnail_2.png" width="48%" />
+  <img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/gitlytics_thumbnail_1.png" width="49%" />
+  <img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/gitlytics_thumbnail_2.png" width="49%" />
 </div>
-<br/>
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/gitlytics_thumbnail_3.png" width="80%" />
+  <img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/gitlytics_thumbnail_3.png" width="98.5%" />
 </div>
 
 ---
