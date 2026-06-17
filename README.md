@@ -9,11 +9,12 @@
 [![React](https://img.shields.io/badge/UI-React-61dafb?logo=react)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Automation](https://img.shields.io/badge/Data%20Backup-Automation%20Tool-purple?logo=github-actions)](https://github.com/ameyac11/gitlytics-github-traffic-automation)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-gitlytics.dev-success)](https://gitlytics.dev)
+[![Homepage](https://img.shields.io/badge/Homepage-gitlytics.dev-success)](https://gitlytics.dev)
+[![Live](https://img.shields.io/badge/Live%20Demo-dashboard.gitlytics.dev-success)](https://dashboard.gitlytics.dev)
 
 **Beautiful GitHub traffic analytics for all your repositories — public and private.** <br/> Track views, clones, referrers, and popular paths indefinitely.
 
-✨ **[Try it live now at gitlytics.dev](https://gitlytics.dev)** ✨
+✨ **[Try the live dashboard at dashboard.gitlytics.dev](https://dashboard.gitlytics.dev)** ✨
 
 <br/>
 
@@ -68,7 +69,7 @@ Please consider giving this project a ⭐ if you find it helpful!
 
 The full Gitlytics ecosystem spans across a few repositories. If you are looking for the live web dashboard or the automation cron job, check out the links below:
 
-- 🌐 **[Gitlytics Web Ecosystem](https://gitlytics.dev)**: The production React Dashboard and VitePress documentation site.
+- 🌐 **[Gitlytics Web Ecosystem](https://github.com/ameyac11/gitlytics-deployement)**: The production homepage, React Dashboard, and VitePress documentation site.
 - ⚙️ **[Gitlytics Automation](https://github.com/ameyac11/gitlytics-github-traffic-automation)**: The GitHub Action companion tool that automates fetching and saving to defeat GitHub's 14-day traffic limit.
 
 ---
