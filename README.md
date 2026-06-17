@@ -11,10 +11,12 @@
 [![Automation](https://img.shields.io/badge/Data%20Backup-Automation%20Tool-purple?logo=github-actions)](https://github.com/ameyac11/gitlytics-github-traffic-automation)
 [![Homepage](https://img.shields.io/badge/Homepage-gitlytics.dev-success)](https://gitlytics.dev)
 [![Live](https://img.shields.io/badge/Live%20Demo-dashboard.gitlytics.dev-success)](https://dashboard.gitlytics.dev)
+[![Docs](https://img.shields.io/badge/Docs-docs.gitlytics.dev-success)](https://docs.gitlytics.dev)
 
 **Beautiful GitHub traffic analytics for all your repositories — public and private.** <br/> Track views, clones, referrers, and popular paths indefinitely.
 
-✨ **[Try the live dashboard at dashboard.gitlytics.dev](https://dashboard.gitlytics.dev)** ✨
+✨ **[Try the live dashboard at dashboard.gitlytics.dev](https://dashboard.gitlytics.dev)** ✨  
+📚 **[Read the documentation at docs.gitlytics.dev](https://docs.gitlytics.dev)**
 
 <br/>
 
@@ -27,11 +29,6 @@
 Please consider giving this project a ⭐ if you find it helpful!
 
 </div>
-
----
-
-> **⚠️ NOTE: V0.1.3 ARCHITECTURE UPGRADE!** <br/>
-> Formerly `github-traffic-monitor`, we have officially rebranded to **`gitlytics`**! We completely migrated away from Streamlit. The dashboard is now a **React + Vite** SPA, powered by a **FastAPI** backend!
 
 ---
 
