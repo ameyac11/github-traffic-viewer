@@ -9,8 +9,11 @@
 [![React](https://img.shields.io/badge/UI-React-61dafb?logo=react)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Automation](https://img.shields.io/badge/Data%20Backup-Automation%20Tool-purple?logo=github-actions)](https://github.com/ameyac11/gitlytics-github-traffic-automation)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-gitlytics.dev-success)](https://gitlytics.dev)
 
 **Beautiful GitHub traffic analytics for all your repositories — public and private.** <br/> Track views, clones, referrers, and popular paths indefinitely.
+
+✨ **[Try it live now at gitlytics.dev](https://gitlytics.dev)** ✨
 
 Please consider giving this project a ⭐ if you find it helpful!
 

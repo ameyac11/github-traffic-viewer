@@ -9,6 +9,7 @@ import {
   Zap,
   ExternalLink,
   PlayCircle,
+  BookOpen,
 } from "lucide-react";
 import {
   authenticate,
@@ -80,7 +81,16 @@ export function LoginView({
   }
 
   return (
-    <div className="flex h-screen items-center justify-center overflow-hidden px-4 py-6">
+    <div className="flex h-screen items-center justify-center overflow-hidden px-4 py-6 relative">
+      <a
+        href="https://docs.gitlytics.dev"
+        target="_blank"
+        rel="noreferrer"
+        className="absolute right-6 top-6 flex items-center gap-1.5 rounded-lg border border-input bg-background/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:scale-[1.02] hover:bg-primary/10 hover:text-primary"
+      >
+        <BookOpen className="h-3.5 w-3.5" />
+        Docs
+      </a>
       <div className="w-full max-w-md">
         <div className="mb-5 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 ring-1 ring-primary/30">

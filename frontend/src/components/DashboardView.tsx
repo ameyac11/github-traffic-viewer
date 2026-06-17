@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Github, Loader2, AlertCircle, ExternalLink, FileSpreadsheet } from "lucide-react";
+import { LogOut, Github, Loader2, AlertCircle, ExternalLink, FileSpreadsheet, BookOpen } from "lucide-react";
 import {
   fetchTraffic,
   downloadCsv,
@@ -132,6 +132,16 @@ export function DashboardView({
               )}
             </div>
 
+
+            <a
+              href="https://docs.gitlytics.dev"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-lg border border-input bg-background/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:scale-[1.02] hover:bg-primary/10 hover:text-primary"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Docs</span>
+            </a>
 
             <button
               onClick={onLogout}
