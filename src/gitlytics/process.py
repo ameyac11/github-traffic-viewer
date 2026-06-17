@@ -1,6 +1,6 @@
 """
 gitlytics/process.py
-Handles processing Tidy DataFrames into final JSON formats for the frontend and dashboard.
+Handles processing Tidy DataFrames into final JSON formats for the dashboard.
 """
 import ast
 import json
@@ -152,7 +152,7 @@ def _parse_raw(val) -> list:
 def build_react_payload(df: pd.DataFrame) -> list:
     """
     Transforms the Tidy Data DataFrame into the exact array of RepoTraffic objects
-    expected by the React frontend. Prevents duplicate rows and populates all chart data.
+    expected by the React dashboard. Prevents duplicate rows and populates all chart data.
     """
     if df.empty:
         return []

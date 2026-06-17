@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.4] - 2026-06-17
+### Added
+- Added official documentation portal links (`docs.gitlytics.dev`) to PyPI metadata and README.
+
+### Changed
+- Renamed the internal `frontend` directory to `dashboard` to match Vercel deployments.
+- Updated PyPI metadata with the official project domain (`gitlytics.dev`) and author contact info.
+- Improved GitHub Actions workflow to use `npm ci` for deterministic UI builds on Node 24.
+- Refactored internal API error messaging to accurately reflect the new dashboard directory structure.
+
 ## [0.1.3] - 2026-06-17
 ### Fixed
 - Bumped version to 0.1.3 to resolve PyPI upload conflict (version 0.1.2 was already taken).

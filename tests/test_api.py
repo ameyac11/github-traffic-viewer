@@ -72,7 +72,7 @@ class TestConfigEndpoint:
         assert response.status_code == 200
 
     def test_returns_has_token_field(self):
-        # has_token tells the frontend whether the server was started with a pre-set token
+        # has_token tells the dashboard whether the server was started with a pre-set token
         data = client.get("/api/config").json()
         assert "has_token" in data
         assert isinstance(data["has_token"], bool)
@@ -86,7 +86,7 @@ class TestConfigEndpoint:
         assert data["has_token"] is False
 
     def test_returns_has_data_dir_field(self):
-        # has_data_dir tells the frontend if a historical CSV directory is configured
+        # has_data_dir tells the dashboard if a historical CSV directory is configured
         data = client.get("/api/config").json()
         assert "has_data_dir" in data
 
@@ -127,7 +127,7 @@ class TestAuthEndpoint:
         "login": "ameyac11", "name": "Ameya Chopade", "avatar_url": "https://avatars.github.com/u/1"
     })
     def test_response_has_all_profile_fields(self, mock_profile, mock_validate):
-        # The frontend needs login, name, and avatar_url — all three must be present
+        # The dashboard needs login, name, and avatar_url — all three must be present
         data = client.post("/api/auth", json={"token": "valid_token"}).json()
         assert "username" in data
         assert "name" in data
@@ -249,7 +249,7 @@ class TestUploadCsvEndpoint:
 
 class TestRootEndpoint:
     def test_root_returns_200_or_503(self):
-        # Root can return 200 (frontend built) or 503 (frontend not built yet)
+        # Root can return 200 (dashboard built) or 503 (dashboard not built yet)
         response = client.get("/")
         assert response.status_code in (200, 503)
 
