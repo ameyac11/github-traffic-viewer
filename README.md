@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./assets/logo.png" alt="Gitlytics Logo" width="150" />
+<img src="https://raw.githubusercontent.com/ameyac11/gitlytics/main/assets/logo.png" alt="Gitlytics Logo" width="150" />
 
 # <span style="color: #F05032">Git</span>lytics
 ### GitHub Traffic Analytics & Automation 
@@ -24,7 +24,7 @@
 
 > **🐍 Native Python API**
 > 
-> You can import Gitlytics natively into your own Python applications to build custom integrations, run custom cron workflows, or serve the dashboard programmatically on your own cloud servers.
+> You can import Gitlytics natively into your own Python applications to fetch live repository data like views, clones, stars, and referrers. Build custom integrations, run custom cron workflows, or serve the dashboard programmatically on your own cloud servers.
 > 
 > 📚 **[Read the Full API Documentation](https://docs.gitlytics.dev)**
 
