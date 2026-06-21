@@ -8,7 +8,7 @@ import json
 
 # Single source of truth for the package version.
 # Mirrors the version in pyproject.toml — keep them in sync.
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 __all__ = ["fetch_traffic", "sync", "serve_dashboard", "__version__"]
 
@@ -98,6 +98,11 @@ def sync(token: str, repo_name=None, data_dir: str = "./data", output_mode: str 
             exported JSON — acts as a security firewall.
         metrics: Optional list of metrics to fetch (e.g., ``["views", "clones"]``).
     """
+    if data_dir and not os.path.isabs(data_dir) and not os.path.exists(data_dir):
+        parent_dir = os.path.join("..", data_dir)
+        if os.path.exists(parent_dir):
+            data_dir = parent_dir
+
     # Hand off to the automation engine — it handles deduplication and schema migration
     run_sync(
         token=token,
@@ -142,7 +147,17 @@ def serve_dashboard(host: str = "127.0.0.1", port: int = 8000, token: str = None
         if token:
             os.environ["GITLYTICS_TOKEN"] = token
         if data_dir:
-            os.environ["GITLYTICS_DATA_DIR"] = os.path.abspath(data_dir)
+            from pathlib import Path
+            abs_data_dir = os.path.abspath(data_dir)
+            if not os.path.exists(abs_data_dir) and not os.path.isabs(data_dir):
+                parent_dir = os.path.abspath(os.path.join("..", data_dir))
+                if os.path.exists(parent_dir):
+                    abs_data_dir = parent_dir
+            if not os.path.exists(abs_data_dir):
+                print(f"⚠️ Warning: The specified data directory '{data_dir}' (resolved to '{abs_data_dir}') does not exist.")
+            elif not any(Path(abs_data_dir).glob("traffic_*.csv")):
+                print(f"⚠️ Warning: No traffic_*.csv database files found in '{data_dir}' (resolved to '{abs_data_dir}').")
+            os.environ["GITLYTICS_DATA_DIR"] = abs_data_dir
         uvicorn.run("gitlytics.api:app", host=host, port=port, reload=False)
     finally:
         if _orig_token is None:

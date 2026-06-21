@@ -191,6 +191,71 @@ class TestTrafficEndpoint:
         assert response.status_code == 200
         assert response.json() == []
 
+    @patch("gitlytics.api.validate_token", return_value=(True, "user"))
+    @patch("gitlytics.api._validate_token_cached", return_value=(True, "user"))
+    @patch("gitlytics.api.fetch_traffic_data")
+    @patch("gitlytics.api.pd.read_csv")
+    @patch("gitlytics.api.Path.glob")
+    @patch("gitlytics.api.Path.exists", return_value=True)
+    def test_merges_csv_and_live_traffic(
+        self, mock_exists, mock_glob, mock_read_csv, mock_fetch, mock_cached, mock_validate
+    ):
+        from pathlib import Path
+        csv_df = pd.DataFrame([{
+            "date": "2026-06-01",
+            "repository": "user/repo",
+            "is_private": False,
+            "views": 10,
+            "unique_visitors": 4,
+            "clones": 5,
+            "unique_cloners": 2,
+            "stars": 20,
+            "forks": 3,
+            "top_referrer": "github.com",
+            "top_referrer_views": 5,
+            "top_referrer_uniques": 2,
+            "top_path": "/README.md",
+            "top_path_views": 4,
+            "top_path_uniques": 1,
+            "_raw_referrers": "[]",
+            "_raw_paths": "[]",
+        }])
+        live_df = pd.DataFrame([{
+            "date": "2026-06-14",
+            "repository": "user/repo",
+            "is_private": False,
+            "views": 15,
+            "unique_visitors": 6,
+            "clones": 8,
+            "unique_cloners": 4,
+            "stars": 20,
+            "forks": 3,
+            "top_referrer": "github.com",
+            "top_referrer_views": 6,
+            "top_referrer_uniques": 3,
+            "top_path": "/README.md",
+            "top_path_views": 5,
+            "top_path_uniques": 2,
+            "_raw_referrers": "[]",
+            "_raw_paths": "[]",
+        }])
+
+        mock_glob.return_value = [Path("traffic_2026-06.csv")]
+        mock_read_csv.return_value = csv_df
+        mock_fetch.return_value = live_df
+
+        with patch.dict("os.environ", {"GITLYTICS_DATA_DIR": "fake_data_dir"}, clear=False):
+            response = client.post("/api/traffic", json={"token": "valid_token"})
+
+        assert response.status_code == 200
+        repos = response.json()
+        assert len(repos) > 0
+        repo_payload = repos[0]
+        daily_views = repo_payload.get("_daily_views", [])
+        timestamps = [item["timestamp"][:10] for item in daily_views]
+        assert "2026-06-01" in timestamps
+        assert "2026-06-14" in timestamps
+
 
 # ── /api/upload-csv ────────────────────────────────────────────────────────────
 

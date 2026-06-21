@@ -176,3 +176,26 @@ class TestRunSyncCycle:
         # The old row (date 2025-06-14) should now have the new column too
         assert "new_col" in rows[0]
         assert len(rows) == 2
+
+    @patch("gitlytics.automation.fetch_traffic_data")
+    def test_subset_sync_preserves_existing_columns(self, mock_fetch, tmp_path):
+        # First run: full sync — all columns written
+        mock_fetch.return_value = _make_df(views=10, clones=5)
+        run_sync_cycle("dummy_token", data_dir=str(tmp_path))
+
+        # Second run: subset sync — only 'views' present in new DataFrame
+        subset_df = pd.DataFrame([{
+            "date": "2025-06-14",
+            "repository": "user/repo",
+            "views": 99,
+        }])
+        mock_fetch.return_value = subset_df
+        run_sync_cycle("dummy_token", data_dir=str(tmp_path))
+
+        csv_file = list(tmp_path.glob("traffic_*.csv"))[0]
+        with open(csv_file, "r", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+
+        # views must be updated; clones must NOT be erased
+        assert rows[0]["views"] == "99"
+        assert rows[0]["clones"] == "5"

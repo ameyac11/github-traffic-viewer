@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
-import { GitCommitHorizontal, Lock } from "lucide-react";
+import { GitCommitHorizontal, Lock, Loader2 } from "lucide-react";
 import type { RepoTraffic } from "@/lib/github-api";
 import { commitActivity } from "@/lib/analytics";
 import { useIsExporting } from "@/hooks/use-export-state";
@@ -17,7 +17,7 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function CommitActivity({ repos }: { repos: RepoTraffic[] }) {
+export function CommitActivity({ repos, isApi = false }: { repos: RepoTraffic[]; isApi?: boolean }) {
   const data = commitActivity(repos);
   const isExporting = useIsExporting();
 
@@ -37,10 +37,18 @@ export function CommitActivity({ repos }: { repos: RepoTraffic[] }) {
       ) : !data.some((d) => d.hasData) ? (
         <div className="flex h-[300px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
-            <Lock className="h-5 w-5 text-primary" />
+            {isApi ? (
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            ) : (
+              <Lock className="h-5 w-5 text-primary" />
+            )}
           </div>
           <p className="max-w-[280px]">
-            Commit activity requires a Personal Access Token. Switch to Live API mode to unlock.
+            {isApi ? (
+              "GitHub is computing commit statistics in the background. Please refresh/reload the page in a few seconds."
+            ) : (
+              "Commit activity requires a Personal Access Token. Switch to Live API mode to unlock."
+            )}
           </p>
         </div>
       ) : (

@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { LoginView } from '@/components/LoginView'
 import { DashboardView } from '@/components/DashboardView'
 import { UsernameView } from '@/components/UsernameView'
+import { LoadingScreen } from '@/components/LoadingScreen'
+import { getBackendConfig, authenticate } from '@/lib/github-api'
 import type { AuthResult, RepoTraffic } from '@/lib/github-api'
 import type { PublicProfile, PublicRepo } from '@/lib/github-public'
 import { fetchUsernamePayload } from '@/lib/github-public'
@@ -36,16 +38,41 @@ export function DashboardPage() {
       }
     } catch { /* ignore */ }
 
+    let existingSession: Session | null = null
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) setSession(JSON.parse(raw))
+      const raw = sessionStorage.getItem(STORAGE_KEY)
+      if (raw) existingSession = JSON.parse(raw)
     } catch { /* ignore */ }
-    setReady(true)
+
+    if (existingSession) {
+      setSession(existingSession)
+      setReady(true)
+      return
+    }
+
+    getBackendConfig()
+      .then((cfg) => {
+        if (cfg.has_token) {
+          authenticate("")
+            .then((auth) => {
+              setSession({ mode: "api", auth, token: "" })
+            })
+            .catch(() => {
+              /* ignore */
+            })
+            .finally(() => setReady(true))
+        } else {
+          setReady(true)
+        }
+      })
+      .catch(() => {
+        setReady(true)
+      })
   }, [])
 
   function persist(s: Session) {
     setSession(s)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore quota */ }
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore quota */ }
   }
 
   function handleApiSuccess(auth: AuthResult, token: string) {
@@ -67,7 +94,7 @@ export function DashboardPage() {
 
   function handleLogout() {
     setSession(null)
-    localStorage.removeItem(STORAGE_KEY)
+    sessionStorage.removeItem(STORAGE_KEY)
     try {
       const url = new URL(window.location.href)
       url.searchParams.delete('user')
@@ -75,7 +102,9 @@ export function DashboardPage() {
     } catch { /* ignore */ }
   }
 
-  if (!ready) return null
+  if (!ready) {
+    return <LoadingScreen label="Connecting your account…" durationMs={25000} />
+  }
 
   if (!session) {
     return (

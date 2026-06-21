@@ -231,7 +231,7 @@ function applyExportCss(): () => void {
     .recharts-responsive-container { overflow: visible !important; }
     .recharts-cartesian-axis-tick text { font-size: 11px; }
     [id^="section-"], #dashboard-root .glass { overflow: visible !important; }
-    * {
+    #dashboard-root * {
       animation-delay: 0s !important;
       animation-duration: 0s !important;
       animation-iteration-count: 1 !important;

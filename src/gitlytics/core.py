@@ -221,8 +221,8 @@ def get_deep_repo_stats(token: str, full_name: str) -> dict:
         "has_code_of_conduct": None,
     }
 
-    # Commit activity — GitHub computes this async and returns 202 when not ready
-    # We do not block the thread pool worker with sleep; accept None on 202 (C-1)
+    # Commit activity — GitHub computes this async and returns 202 when not ready.
+    # total_commits here is the trailing 52-week (12-month) sum, NOT lifetime.
     ca_url = f"{BASE}/repos/{full_name}/stats/commit_activity"
     ca_data, status = _safe_get(ca_url, h)
     if status == 202:
@@ -254,12 +254,35 @@ def get_deep_repo_stats(token: str, full_name: str) -> dict:
         stats["has_contributing"] = bool(files.get("contributing"))
         stats["has_code_of_conduct"] = bool(files.get("code_of_conduct"))
 
-    # Releases — count and most recent publish date
-    rel_data, _ = _safe_get(f"{BASE}/repos/{full_name}/releases", h, params={"per_page": 100})
-    if isinstance(rel_data, list):
-        stats["total_releases"] = len(rel_data)
-        if rel_data:
-            stats["last_release_at"] = rel_data[0].get("published_at") or rel_data[0].get("created_at")
+    # Releases — count real total using Link header pagination, then get latest date
+    try:
+        rel_resp = requests.get(
+            f"{BASE}/repos/{full_name}/releases",
+            headers=h,
+            params={"per_page": 1},
+            timeout=10,
+        )
+        if rel_resp.status_code == 200:
+            link = rel_resp.headers.get("Link", "")
+            if 'rel="last"' in link:
+                import re as _re
+                m = _re.search(r'page=(\d+)>; rel="last"', link)
+                stats["total_releases"] = int(m.group(1)) if m else 1
+            else:
+                # Only one page — count items in this page
+                items = rel_resp.json()
+                stats["total_releases"] = len(items) if isinstance(items, list) else 0
+            # Fetch the latest release separately for its date
+            latest_resp = requests.get(
+                f"{BASE}/repos/{full_name}/releases/latest",
+                headers=h,
+                timeout=10,
+            )
+            if latest_resp.status_code == 200:
+                latest = latest_resp.json()
+                stats["last_release_at"] = latest.get("published_at") or latest.get("created_at")
+    except Exception as exc:
+        logger.warning(f"Could not fetch releases for {full_name}: {exc}")
 
     return stats
 

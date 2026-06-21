@@ -177,26 +177,46 @@ const RANGE_FACTOR: Record<RangeKey, number> = {
 const RANGE_DAYS: Record<RangeKey, number> = {
   "7D": 7,
   "14D": 14,
-  "30D": 14,
-  "90D": 14,
-  Custom: 14,
+  "30D": 30,
+  "90D": 90,
+  Custom: 90,
 };
 
 export function scaleByRange(repos: RepoTraffic[], range: RangeKey): RepoTraffic[] {
   const f = RANGE_FACTOR[range];
   const dayCount = RANGE_DAYS[range];
-  if (f === 1 && dayCount === 14) return repos;
-  const sc = (n: number | undefined) => Math.round((Number(n) || 0) * f);
-  return repos.map((r) => ({
-    ...r,
-    "views": sc(r["views"]),
-    "unique_visitors": sc(r["unique_visitors"]),
-    "clones": sc(r["clones"]),
-    "unique_cloners": sc(r["unique_cloners"]),
-    _daily_views: (r._daily_views ?? []).slice(-dayCount).map((p) => ({ ...p, count: Math.round(p.count * f) })),
-    _daily_clones: (r._daily_clones ?? []).slice(-dayCount).map((p) => ({ ...p, count: Math.round(p.count * f) })),
-    _referrers: (r._referrers ?? []).map((p) => ({ ...p, count: Math.round(p.count * f), uniques: Math.round(p.uniques * f) })),
-  }));
+
+  return repos.map((r) => {
+    const dv = r._daily_views ?? [];
+    const dc = r._daily_clones ?? [];
+
+    if (dv.length > 14 || dv.length >= dayCount) {
+      const slicedDv = dv.slice(-dayCount);
+      const slicedDc = dc.slice(-dayCount);
+      return {
+        ...r,
+        "views": slicedDv.reduce((a, p) => a + p.count, 0),
+        "unique_visitors": slicedDv.reduce((a, p) => a + p.uniques, 0),
+        "clones": slicedDc.reduce((a, p) => a + p.count, 0),
+        "unique_cloners": slicedDc.reduce((a, p) => a + p.uniques, 0),
+        _daily_views: slicedDv,
+        _daily_clones: slicedDc,
+        _referrers: r._referrers ?? [],
+      };
+    }
+
+    const sc = (n: number | undefined) => Math.round((Number(n) || 0) * f);
+    return {
+      ...r,
+      "views": sc(r["views"]),
+      "unique_visitors": sc(r["unique_visitors"]),
+      "clones": sc(r["clones"]),
+      "unique_cloners": sc(r["unique_cloners"]),
+      _daily_views: dv.slice(-dayCount).map((p) => ({ ...p, count: Math.round(p.count * f) })),
+      _daily_clones: dc.slice(-dayCount).map((p) => ({ ...p, count: Math.round(p.count * f) })),
+      _referrers: (r._referrers ?? []).map((p) => ({ ...p, count: Math.round(p.count * f), uniques: Math.round(p.uniques * f) })),
+    };
+  });
 }
 
 /* ---------- sync history ---------- */

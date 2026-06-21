@@ -88,7 +88,7 @@ export function CardModal({
           <div>
             <h3 className="text-sm font-semibold">Create Developer Card</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Shareable image for Twitter and LinkedIn
+              Shareable image for X and LinkedIn
             </p>
           </div>
           <button
@@ -147,7 +147,7 @@ export function CardModal({
     </div>,
     document.body,
   );
-}function DeveloperCard({
+} function DeveloperCard({
   profile,
   opts,
   totalStars,
@@ -172,8 +172,8 @@ export function CardModal({
       className="relative w-[480px] rounded-2xl border border-border/80 p-6 shadow-2xl bg-[#141312] overflow-hidden"
     >
       {/* Decorative Glow */}
-      <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-      <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-chart-2/10 blur-3xl pointer-events-none" />
+      <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/10 pointer-events-none" />
+      <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-chart-2/10 pointer-events-none" />
 
       {/* Header Branding */}
       <div className="relative z-10 mb-5 flex items-center gap-2">

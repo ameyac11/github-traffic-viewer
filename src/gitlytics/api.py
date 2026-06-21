@@ -135,22 +135,38 @@ def get_traffic(token: str = Body("", embed=True)):
     if not ok:
         raise HTTPException(status_code=401, detail="Invalid token")
     data_dir = os.environ.get("GITLYTICS_DATA_DIR")
+    dfs = []
     if data_dir:
         data_dir_path = Path(data_dir)
-        csv_files = list(data_dir_path.glob("traffic_*.csv")) if data_dir_path.exists() else []
-        dfs = []
-        for f in csv_files:
-            try:
-                dfs.append(pd.read_csv(f))
-            except Exception as exc:
-                logger.warning(f"Skipping unreadable CSV '{f}': {exc}")
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-            df = df.drop_duplicates(subset=["date", "repository"], keep="last")
+        if not data_dir_path.exists():
+            logger.warning(f"Data directory '{data_dir}' does not exist.")
         else:
-            df = fetch_traffic_data(active_token)
+            csv_files = list(data_dir_path.glob("traffic_*.csv"))
+            if not csv_files:
+                logger.warning(f"No traffic_*.csv files found in '{data_dir}'.")
+            for f in csv_files:
+                try:
+                    dfs.append(pd.read_csv(f))
+                except Exception as exc:
+                    logger.warning(f"Skipping unreadable CSV '{f}': {exc}")
+
+    try:
+        live_df = fetch_traffic_data(active_token)
+    except Exception as exc:
+        logger.warning(f"Failed to fetch live traffic: {exc}")
+        live_df = pd.DataFrame()
+
+    if dfs:
+        csv_df = pd.concat(dfs, ignore_index=True)
+        if not live_df.empty:
+            df = pd.concat([csv_df, live_df], ignore_index=True)
+        else:
+            df = csv_df
     else:
-        df = fetch_traffic_data(active_token)
+        df = live_df
+
+    if not df.empty:
+        df = df.drop_duplicates(subset=["date", "repository"], keep="last")
 
     df = df.replace([float('inf'), float('-inf')], None).where(pd.notnull(df), None)
 

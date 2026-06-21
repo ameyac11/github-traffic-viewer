@@ -71,6 +71,17 @@ export interface RepoTraffic {
   _paths?: PathPoint[];
 }
 
+export interface BackendConfig {
+  has_token: boolean;
+  has_data_dir: boolean;
+}
+
+export async function getBackendConfig(): Promise<BackendConfig> {
+  const res = await fetch(`${API_BASE}/api/config`);
+  if (!res.ok) throw new Error("Failed to fetch backend config.");
+  return res.json() as Promise<BackendConfig>;
+}
+
 export async function authenticate(token: string): Promise<AuthResult> {
   const res = await fetch(`${API_BASE}/api/auth`, {
     method: "POST",

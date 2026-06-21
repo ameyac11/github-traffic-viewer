@@ -35,12 +35,12 @@ def build_json_payload(df: pd.DataFrame, return_format: str = "timeseries", expo
     for repo, group in df.groupby("repository"):
         group = group.sort_values("date")
 
-        r_views = int(group["views"].sum()) if "views" in group.columns else 0
-        r_clones = int(group["clones"].sum()) if "clones" in group.columns else 0
-        r_unique_v = int(group["unique_visitors"].sum()) if "unique_visitors" in group.columns else 0
-        r_unique_c = int(group["unique_cloners"].sum()) if "unique_cloners" in group.columns else 0
-        r_stars = int(group["stars"].dropna().iloc[-1]) if "stars" in group.columns and not group["stars"].dropna().empty else 0
-        r_forks = int(group["forks"].dropna().iloc[-1]) if "forks" in group.columns and not group["forks"].dropna().empty else 0
+        r_views = _safe_int(group["views"].sum()) if "views" in group.columns else 0
+        r_clones = _safe_int(group["clones"].sum()) if "clones" in group.columns else 0
+        r_unique_v = _safe_int(group["unique_visitors"].sum()) if "unique_visitors" in group.columns else 0
+        r_unique_c = _safe_int(group["unique_cloners"].sum()) if "unique_cloners" in group.columns else 0
+        r_stars = _safe_int(group["stars"].dropna().iloc[-1]) if "stars" in group.columns and not group["stars"].dropna().empty else 0
+        r_forks = _safe_int(group["forks"].dropna().iloc[-1]) if "forks" in group.columns and not group["forks"].dropna().empty else 0
         r_is_private = bool(group["is_private"].dropna().iloc[-1]) if "is_private" in group.columns and not group["is_private"].dropna().empty else False
 
         top_ref = str(group["top_referrer"].dropna().iloc[-1]) if "top_referrer" in group.columns and not group["top_referrer"].dropna().empty else ""
@@ -103,6 +103,11 @@ def build_json_payload(df: pd.DataFrame, return_format: str = "timeseries", expo
 def process_uploaded_csv(uploaded_file) -> pd.DataFrame:
     """Reads a user-uploaded CSV and normalises column names to match our tidy schema."""
     raw_df = pd.read_csv(uploaded_file)
+
+    # Normalise capitalized "Date" column before any other checks
+    if "Date" in raw_df.columns and "date" not in raw_df.columns:
+        raw_df = raw_df.rename(columns={"Date": "date"})
+
     if "repository" not in raw_df.columns:
         if "repo_name" in raw_df.columns:
             raw_df = raw_df.rename(columns={"repo_name": "repository"})
@@ -113,7 +118,7 @@ def process_uploaded_csv(uploaded_file) -> pd.DataFrame:
             })
         else:
             raise ValueError("Invalid CSV format: missing 'repository' column")
-    # M-5: validate date column exists after renaming so callers get 400 not a 500 KeyError later
+
     if "date" not in raw_df.columns:
         raise ValueError("Invalid CSV format: missing required 'date' column")
     return raw_df
@@ -161,10 +166,10 @@ def build_react_payload(df: pd.DataFrame, deep_stats: dict = None) -> list:
     for repo, group in df.groupby("repository"):
         group = group.sort_values("date")
 
-        r_views = int(group["views"].sum()) if "views" in group.columns else 0
-        r_clones = int(group["clones"].sum()) if "clones" in group.columns else 0
-        r_unique_v = int(group["unique_visitors"].sum()) if "unique_visitors" in group.columns else 0
-        r_unique_c = int(group["unique_cloners"].sum()) if "unique_cloners" in group.columns else 0
+        r_views = _safe_int(group["views"].sum()) if "views" in group.columns else 0
+        r_clones = _safe_int(group["clones"].sum()) if "clones" in group.columns else 0
+        r_unique_v = _safe_int(group["unique_visitors"].sum()) if "unique_visitors" in group.columns else 0
+        r_unique_c = _safe_int(group["unique_cloners"].sum()) if "unique_cloners" in group.columns else 0
         r_stars = _safe_int(group["stars"].dropna().iloc[-1]) if "stars" in group.columns and not group["stars"].dropna().empty else 0
         r_forks = _safe_int(group["forks"].dropna().iloc[-1]) if "forks" in group.columns and not group["forks"].dropna().empty else 0
         r_is_private = bool(group["is_private"].dropna().iloc[-1]) if "is_private" in group.columns and not group["is_private"].dropna().empty else False
@@ -194,13 +199,13 @@ def build_react_payload(df: pd.DataFrame, deep_stats: dict = None) -> list:
             date_str = str(row["date"])
             daily_views.append({
                 "timestamp": date_str,
-                "count": int(row.get("views", 0)),
-                "uniques": int(row.get("unique_visitors", 0))
+                "count": _safe_int(row.get("views", 0)),
+                "uniques": _safe_int(row.get("unique_visitors", 0))
             })
             daily_clones.append({
                 "timestamp": date_str,
-                "count": int(row.get("clones", 0)),
-                "uniques": int(row.get("unique_cloners", 0))  # fixed typo
+                "count": _safe_int(row.get("clones", 0)),
+                "uniques": _safe_int(row.get("unique_cloners", 0))  # fixed typo
             })
 
         raw_refs_val = group["_raw_referrers"].iloc[-1] if "_raw_referrers" in group.columns else None

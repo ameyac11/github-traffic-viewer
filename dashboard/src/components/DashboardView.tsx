@@ -462,7 +462,7 @@ export function DashboardView({
             )}
             {advanced && (
               <div id="section-commits">
-                <CommitActivity repos={filtered} />
+                <CommitActivity repos={filtered} isApi={isApi} />
               </div>
             )}
             {advanced && (

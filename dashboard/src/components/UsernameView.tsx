@@ -233,7 +233,7 @@ export function UsernameView({
                 </a>
               )}
               {profile.twitter_username && (
-                <a href={`https://twitter.com/${profile.twitter_username}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-primary">
+                <a href={`https://x.com/${profile.twitter_username}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-primary">
                   @{profile.twitter_username}<ExternalLink className="h-3 w-3" />
                 </a>
               )}

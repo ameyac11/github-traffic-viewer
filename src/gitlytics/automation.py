@@ -130,13 +130,15 @@ def run_sync_cycle(token: str, repo_names=None, data_dir="./data", output_mode="
     else:
         existing_fields = new_fields
 
-    # Overwrite existing rows with fresh data, and add brand-new day rows
+    # Merge fresh data into existing rows — preserves columns not present in this sync run
     new_records_added = 0
     for _, row in df.iterrows():
         key = (str(row["repository"]), str(row["date"]))
         if key not in existing_data:
             new_records_added += 1
-        existing_data[key] = row.to_dict()
+            existing_data[key] = row.to_dict()
+        else:
+            existing_data[key].update(row.to_dict())
 
     # Sort all rows by date and repo name before writing back to disk
     final_rows = []

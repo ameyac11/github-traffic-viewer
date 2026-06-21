@@ -322,3 +322,34 @@ class TestProcessUploadedCsv:
         })
         result = process_uploaded_csv(csv_file)
         assert result["views"].iloc[0] == 42
+
+    def test_capitalized_date_column_accepted(self):
+        # A CSV with 'Date' (capital D) should be normalised and accepted
+        csv_file = self._make_csv_bytes({
+            "repository": "user/repo",
+            "Date": "2025-06-14",
+            "views": 10,
+        })
+        result = process_uploaded_csv(csv_file)
+        assert "date" in result.columns
+        assert "Date" not in result.columns
+
+    def test_none_values_in_metrics_do_not_crash_payload(self):
+        # A DataFrame with None metric values must not crash build_react_payload
+        from gitlytics.process import build_react_payload
+        import pandas as pd
+        df = pd.DataFrame([{
+            "date": "2025-06-14",
+            "repository": "user/repo",
+            "is_private": False,
+            "views": None,
+            "unique_visitors": None,
+            "clones": None,
+            "unique_cloners": None,
+            "stars": None,
+            "forks": None,
+        }])
+        result = build_react_payload(df)
+        assert isinstance(result, list)
+        assert result[0]["views"] == 0
+        assert result[0]["clones"] == 0

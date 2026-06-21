@@ -1,6 +1,17 @@
 # Changelog
 
+## [0.1.7] - 2026-06-21
+### Fixed
+- **Subset sync data loss**: Running `gitlytics sync --metrics views` no longer erases existing columns (e.g. `clones`, `stars`, `forks`) from historical CSV rows — affected columns are now merged rather than overwritten.
+- **FastAPI null/None crash**: Dashboard no longer throws `TypeError` when a CSV has empty or missing metric cells — all integer conversions in `process.py` now use the safe `_safe_int` helper.
+- **Capitalized "Date" column rejected**: CSV files with a capitalized `Date` header are now accepted and automatically normalised to `date` before validation.
+- **Releases count capped at 100**: Total release count now uses GitHub's Link header pagination to return the true total, even for repositories with more than 100 releases.
+- **Misleading "Total Commits" label**: Clarified in comments and documentation that `total_commits` reflects the trailing 12-month (52-week) GitHub stat, not a lifetime count.
+- **Range scaling discarded real data**: The dashboard range selector (`30D`, `90D`) now uses actual historical daily data points when a sufficient number of CSV records are available, rather than always multiplying the last 14 days by a static scale factor.
+- **Relative data directory path resolution**: Added auto-resolution to look in the parent directory (`..`) for relative data directories if they aren't found locally. This fixes silent CSV loading failures and resolves the issue where the expanded repository Daily Trends line charts were capped at 14 days of data when the dashboard was launched from a package subdirectory.
+
 ## [0.1.6] - 2026-06-20
+
 ### Added
 - Added `-m` / `--metrics` filtering parameters to CLI commands (`fetch`, `sync`) and Python API functions to selectively fetch or sync specific metrics.
 - Implemented concurrent threading in the backend for faster deep API fetching of commits, pull requests, releases, and community profiles.
