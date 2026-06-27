@@ -8,6 +8,7 @@ Handles fetching traffic and deep metadata from the GitHub API.
 """
 import json
 import logging
+import re
 
 import requests
 import pandas as pd
@@ -23,10 +24,7 @@ _GITHUB_BASE_HEADERS = {
     "X-GitHub-Api-Version": "2022-11-28",
 }
 _PUBLIC_HEADERS = dict(_GITHUB_BASE_HEADERS)
-_MAX_RELEASE_PAGES = 10      # hard cap when walking /releases
-_MAX_PR_PAGES = 10           # hard cap when walking /pulls
-_MAX_COMMIT_PAGES = 50       # hard cap when counting /commits (50 * 100 = 5000)
-_PER_PAGE = 100              # request size for paginated endpoints
+_PER_PAGE = 100              # page size for paginated endpoints
 
 
 class GitHubRateLimitError(Exception):
@@ -227,29 +225,33 @@ def _safe_get(url: str, headers: dict, params: dict = None) -> tuple:
         return {}, -1
 
 
-def _walk_paginated_count(url: str, headers: dict, params: dict, max_pages: int) -> int:
+def _count_via_link_header(url: str, headers: dict, params: dict = None) -> int:
+    """Get item count in exactly 1 API call using the Link header pagination trick.
+
+    Requests per_page=1 so GitHub includes a Link header with the last page
+    number, which equals the total count. Falls back to len(response) when
+    the repository has only one page of results (no Link header present).
     """
-    Count items across pages. Returns the total count, capped at max_pages * per_page.
-    The GitHub REST API for /pulls and /releases does not return a total_count,
-    so we have to walk pages.
-    """
-    total = 0
-    per_page = int(params.get("per_page", _PER_PAGE)) if params else _PER_PAGE
-    page_params = dict(params or {})
-    page_params["per_page"] = per_page
-    for page in range(1, max_pages + 1):
-        page_params["page"] = page
-        data, status = _safe_get(url, headers, page_params)
-        if status != 200 or not isinstance(data, list) or not data:
-            break
-        total += len(data)
-        if len(data) < per_page:
-            break
-    return total
+    p = dict(params or {})
+    p["per_page"] = 1
+    try:
+        r = requests.get(url, headers=headers, params=p, timeout=10)
+        if r.status_code != 200:
+            return 0
+        link = r.headers.get("Link", "")
+        match = re.search(r'[?&]page=(\d+)[^>]*>;\s*rel="last"', link)
+        if match:
+            return int(match.group(1))
+        # No Link header = all results fit on one page
+        data = r.json()
+        return len(data) if isinstance(data, list) else 0
+    except Exception as exc:
+        logger.warning("Link-header count failed for %s: %s", url, exc)
+        return 0
 
 
 def get_deep_repo_stats(token: str, full_name: str) -> dict:
-    """Fetches commit activity, open PRs, releases, and community health for one repo."""
+    """Fetch commit count, open PRs, releases, and community health in exactly 4 API calls."""
     h = make_headers(token)
     stats = {
         "total_commits": None,
@@ -262,60 +264,55 @@ def get_deep_repo_stats(token: str, full_name: str) -> dict:
         "has_code_of_conduct": None,
     }
 
-    # Commit activity — GitHub computes this async and returns 202 when not ready.
-    # NOTE: stats/commit_activity only reports the trailing 52-week window, so for
-    # repos where the user expects to see lifetime history we count via
-    # /repos/{full_name}/commits?per_page=100 and walk pages. GitHub hard-caps
-    # /commits at ~1000 results on a single unauthenticated/traffic endpoint, so
-    # the lifetime count returned here is the lifetime visible to the API.
-    ca_url = f"{BASE}/repos/{full_name}/stats/commit_activity"
-    ca_data, status = _safe_get(ca_url, h)
-    if status == 202:
-        logger.info(f"Commit activity not ready yet (202) for {full_name}; will populate on next fetch.")
+    # Call 1: Commit activity (52-week window). GitHub computes this asynchronously
+    # and returns 202 while it's being prepared. When ready it gives us a weekly
+    # breakdown which also powers the CommitActivity chart in the dashboard.
+    ca_data, ca_status = _safe_get(f"{BASE}/repos/{full_name}/stats/commit_activity", h)
+    if ca_status == 202:
+        logger.info("Commit activity computing (202) for %s — will populate on next fetch.", full_name)
     if isinstance(ca_data, list) and ca_data:
         stats["total_commits"] = sum(week.get("total", 0) for week in ca_data)
     else:
-        # Fall back to a lifetime count when stats/commit_activity is empty or
-        # not yet computed (202 / empty list). Walking /commits is slower but
-        # always returns the real lifetime history for repos under ~10k commits.
-        commits_url = f"{BASE}/repos/{full_name}/commits"
+        # Call 1b (fallback): commit_activity not ready — use Link header trick to
+        # count commits in 1 request instead of walking up to 50 pages.
         try:
-            stats["total_commits"] = _walk_paginated_count(
-                commits_url, h, {"per_page": _PER_PAGE}, _MAX_COMMIT_PAGES
+            stats["total_commits"] = _count_via_link_header(
+                f"{BASE}/repos/{full_name}/commits", h
             )
         except Exception as exc:
-            logger.warning(f"Could not fetch commit count for {full_name}: {exc}")
+            logger.warning("Could not fetch commit count for %s: %s", full_name, exc)
 
-    # Open PRs — walk pages because GitHub's /pulls endpoint doesn't return a total.
-    pr_url = f"{BASE}/repos/{full_name}/pulls"
+    # Call 2: Open PRs — Link header trick replaces up to 10 paginated calls.
     try:
-        stats["open_prs"] = _walk_paginated_count(pr_url, h, {"state": "open"}, _MAX_PR_PAGES)
+        stats["open_prs"] = _count_via_link_header(
+            f"{BASE}/repos/{full_name}/pulls", h, {"state": "open"}
+        )
     except Exception as exc:
-        logger.warning(f"Could not fetch open PRs for {full_name}: {exc}")
+        logger.warning("Could not fetch open PRs for %s: %s", full_name, exc)
 
-    # Community health profile — README, license, contributing, CoC
+    # Call 3: Community health (README, license, contributing, CoC) — 1 call, unchanged.
     cp_data, _ = _safe_get(f"{BASE}/repos/{full_name}/community/profile", h)
     if isinstance(cp_data, dict) and "files" in cp_data:
-        files = cp_data.get("files", {})
+        files = cp_data["files"]
         stats["has_readme"] = bool(files.get("readme"))
         stats["has_license"] = bool(files.get("license"))
         stats["has_contributing"] = bool(files.get("contributing"))
         stats["has_code_of_conduct"] = bool(files.get("code_of_conduct"))
 
-    # Releases — walk pages to get the real total, then read the latest's date from
-    # the first page (GitHub returns releases sorted newest-first, so page=1 has it).
+    # Call 4: Releases — Link header trick for count + per_page=1 returns the
+    # newest release (GitHub sorts newest-first) so we get last_release_at too.
     try:
         rel_url = f"{BASE}/repos/{full_name}/releases"
-        first_page, status = _safe_get(rel_url, h, {"per_page": _PER_PAGE, "page": 1})
-        if status == 200 and isinstance(first_page, list):
-            stats["total_releases"] = _walk_paginated_count(
-                rel_url, h, {"per_page": _PER_PAGE}, _MAX_RELEASE_PAGES
-            )
-            if first_page:
-                latest = first_page[0]
-                stats["last_release_at"] = latest.get("published_at") or latest.get("created_at")
+        r = requests.get(rel_url, headers=h, params={"per_page": 1}, timeout=10)
+        if r.status_code == 200:
+            link = r.headers.get("Link", "")
+            match = re.search(r'[?&]page=(\d+)[^>]*>;\s*rel="last"', link)
+            stats["total_releases"] = int(match.group(1)) if match else len(r.json())
+            data = r.json()
+            if isinstance(data, list) and data:
+                stats["last_release_at"] = data[0].get("published_at") or data[0].get("created_at")
     except Exception as exc:
-        logger.warning(f"Could not fetch releases for {full_name}: {exc}")
+        logger.warning("Could not fetch releases for %s: %s", full_name, exc)
 
     return stats
 
