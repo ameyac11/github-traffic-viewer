@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Body, File, UploadFile
+from fastapi import FastAPI, HTTPException, Body, File, Header, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +23,9 @@ from gitlytics.core import (
     get_public_repos,
     fetch_traffic_data,
     fetch_deep_stats_for_top,
+    fetch_star_history,
+    GitHubRateLimitError,
+    StarHistoryFetchError,
 )
 from gitlytics.process import process_uploaded_csv, build_react_payload
 
@@ -206,6 +209,36 @@ def get_traffic(token: str = Body("", embed=True)):
 
     payload = build_react_payload(df, deep_stats=deep_stats)
     return payload
+
+
+# Star history endpoint — sampled star timeline for the SPA chart.
+# Accepts the token via Authorization: Bearer header (PAT) so the chart
+# can hit its own backend without exposing the token to the cloud.
+# Falls back to GITLYTICS_TOKEN env so the local widget still works
+# for users who stored their PAT in env instead of the LoginView.
+@app.get("/api/star-history")
+def get_star_history_endpoint(
+    owner: str,
+    repo: str,
+    response: Response,
+    authorization: str | None = Header(default=None),
+):
+    bearer = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        bearer = authorization.split(" ", 1)[1].strip()
+    token = bearer or os.environ.get("GITLYTICS_TOKEN")
+    try:
+        points = fetch_star_history(owner, repo, token)
+    except GitHubRateLimitError as exc:
+        # Surface rate-limit hits as 429 so the SPA shows the chart's rate-limit UI.
+        raise HTTPException(status_code=429, detail=str(exc))
+    except StarHistoryFetchError as exc:
+        # Validation / metadata / network failures are caller errors — 400 makes more
+        # sense than 429 here so the SPA can distinguish "GitHub is throttling us"
+        # from "your request was malformed".
+        raise HTTPException(status_code=400, detail=str(exc))
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    return {"owner": owner, "repo": repo, "points": points}
 
 
 @app.post("/api/upload-csv")

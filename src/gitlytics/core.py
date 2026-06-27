@@ -29,6 +29,14 @@ _MAX_COMMIT_PAGES = 50       # hard cap when counting /commits (50 * 100 = 5000)
 _PER_PAGE = 100              # request size for paginated endpoints
 
 
+class GitHubRateLimitError(Exception):
+    """Raised when GitHub responds with 403/429 (rate limit or abuse guard)."""
+
+
+class StarHistoryFetchError(Exception):
+    """Raised for non-rate-limit star-history failures (network, parse, validation)."""
+
+
 def make_headers(token: str) -> dict:
     # Auth headers for authenticated API calls
     return {
@@ -369,6 +377,162 @@ def get_single_repo(token: str, full_name: str) -> dict:
             f"(HTTP {status})."
         )
     return data
+
+
+def _star_headers(token: str | None) -> dict:
+    # Headers for the stargazers endpoint — needs the star+json media type
+    # so each item carries `starred_at`. Token is optional for public reads.
+    # Merge order matters: star+json must land AFTER the base headers so it
+    # overrides the default Accept (otherwise GitHub returns bare user objects).
+    h = {
+        **_GITHUB_BASE_HEADERS,
+        "Accept": "application/vnd.github.star+json",
+    }
+    if token:
+        h["Authorization"] = f"Bearer {token}"
+    return h
+
+
+def fetch_star_history(owner: str, repo: str, token: str | None = None) -> list[dict]:
+    # Returns list of {date, total} cumulative points. No on-disk cache — the
+    # library always reads live from GitHub; the browser (IndexedDB via
+    # TanStack) and the Vercel CDN cache handle persistence upstream.
+    if not owner or not repo or "/" in repo:
+        raise ValueError("fetch_star_history requires owner and repo (no '/' in repo).")
+
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+
+    # Live fetch — pull total star count from the repo metadata endpoint.
+    meta, status = _safe_get(f"{BASE}/repos/{owner}/{repo}", _star_headers(token))
+    if status in (403, 429):
+        # GitHub's rate-limit guard returns 403 with a 'rate limit' message in body.
+        raise GitHubRateLimitError("GitHub rate limit reached, try again later")
+    if status != 200 or not isinstance(meta, dict):
+        raise StarHistoryFetchError(f"Failed to fetch repo metadata (HTTP {status})")
+    total_stars = int(meta.get("stargazers_count", 0) or 0)
+    if total_stars <= 0:
+        return [{"date": today_str, "total": 0}]
+
+    headers = _star_headers(token)
+    per_page = _PER_PAGE
+    points: list[dict] = []
+    # Choose strategy based on repo size so small repos get a real
+    # datewise timeline (every individual star) while large repos use
+    # sampling to stay under rate limits.
+    SMALL_THRESHOLD = 200
+    if total_stars <= SMALL_THRESHOLD:
+        # Walk every page at smaller page size for finer granularity.
+        small_per_page = 30
+        positions = list(range(1, total_stars + 1))
+        # Use the small page size for these requests.
+        per_page = small_per_page
+        small_by_page: dict[int, list[int]] = {}
+        for pos in positions:
+            p = (pos - 1) // small_per_page + 1
+            small_by_page.setdefault(p, []).append(pos)
+        for p, poses in small_by_page.items():
+            try:
+                r = requests.get(
+                    f"{BASE}/repos/{owner}/{repo}/stargazers",
+                    headers=headers,
+                    params={"page": p, "per_page": small_per_page},
+                    timeout=10,
+                )
+            except Exception as exc:
+                logger.warning(f"Stargazers fetch failed for {owner}/{repo} page {p}: {exc}")
+                continue
+            if r.status_code in (403, 429):
+                raise GitHubRateLimitError("GitHub rate limit reached, try again later")
+            if r.status_code != 200:
+                logger.warning(f"Stargazers page {p} returned HTTP {r.status_code}")
+                continue
+            items = r.json()
+            if not isinstance(items, list):
+                continue
+            for pos in poses:
+                offset = (pos - 1) % small_per_page
+                if offset >= len(items):
+                    continue
+                item = items[offset]
+                if not isinstance(item, dict):
+                    continue
+                starred_at = item.get("starred_at")
+                if not starred_at:
+                    continue
+                points.append({"date": str(starred_at)[:10], "total": pos})
+    else:
+        # Pick 10 evenly-spaced individual stars. GitHub only keeps the last
+        # ~420 pages of stargazers even for huge repos so we cap the page
+        # range to avoid 422s on the upper bound.
+        max_pages = 422
+        max_position = min(total_stars, max_pages * per_page)
+        sample_count = 10
+        if max_position == 1:
+            sampled = [1]
+        else:
+            step = (max_position - 1) / (sample_count - 1)
+            sampled = sorted({max(1, min(max_position, round(1 + i * step))) for i in range(sample_count)})
+        # Group positions by page so each page is requested at most once.
+        by_page: dict[int, list[int]] = {}
+        for pos in sampled:
+            p = (pos - 1) // per_page + 1
+            by_page.setdefault(p, []).append(pos)
+        for p, poses in by_page.items():
+            try:
+                r = requests.get(
+                    f"{BASE}/repos/{owner}/{repo}/stargazers",
+                    headers=headers,
+                    params={"page": p, "per_page": per_page},
+                    timeout=10,
+                )
+            except Exception as exc:
+                logger.warning(f"Stargazers fetch failed for {owner}/{repo} page {p}: {exc}")
+                continue
+            if r.status_code in (403, 429):
+                raise GitHubRateLimitError("GitHub rate limit reached, try again later")
+            if r.status_code != 200:
+                logger.warning(f"Stargazers page {p} returned HTTP {r.status_code}")
+                continue
+            items = r.json()
+            if not isinstance(items, list):
+                continue
+            for pos in poses:
+                offset = (pos - 1) % per_page
+                if offset >= len(items):
+                    continue
+                item = items[offset]
+                if not isinstance(item, dict):
+                    continue
+                starred_at = item.get("starred_at")
+                if not starred_at:
+                    continue
+                points.append({"date": str(starred_at)[:10], "total": pos})
+
+    # Build a per-day cumulative timeline. Each entry means "by end of <date>,
+    # this repo had <total> stars". Today always equals the live stargazers
+    # count so the chart's right edge is the current count.
+    per_day_max: dict[str, int] = {}
+    for p in points:
+        d = p["date"]
+        per_day_max[d] = max(per_day_max.get(d, 0), int(p["total"]))
+    if not per_day_max or max(per_day_max.values()) < total_stars:
+        per_day_max[today_str] = total_stars
+
+    # Convert raw "max position on this day" into a running cumulative count.
+    # Stars are monotone — total can never decrease across dates.
+    sorted_dates = sorted(per_day_max.keys())
+    cumulative = 0
+    points: list[dict] = []
+    for d in sorted_dates:
+        cumulative = max(cumulative, per_day_max[d])
+        points.append({"date": d, "total": cumulative})
+    if points and points[-1]["date"] != today_str:
+        points.append({"date": today_str, "total": max(cumulative, total_stars)})
+    if points and points[-1]["total"] < total_stars:
+        points[-1] = {"date": today_str, "total": total_stars}
+
+    return points
 
 
 def get_repo_traffic(token: str, full_name: str, metrics: list = None) -> dict:

@@ -9,12 +9,26 @@ from pathlib import Path
 
 # Single source of truth for the package version.
 # Mirrors the version in pyproject.toml — keep them in sync.
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
-__all__ = ["fetch_traffic", "sync", "serve_dashboard", "__version__"]
+__all__ = [
+    "fetch_traffic",
+    "fetch_star_history",
+    "sync",
+    "serve_dashboard",
+    "__version__",
+    "GitHubRateLimitError",
+    "StarHistoryFetchError",
+]
 
 # Import the internal building blocks — users never call these directly
-from .core import fetch_traffic_data, print_repo_table
+from .core import (
+    fetch_traffic_data,
+    fetch_star_history,
+    print_repo_table,
+    GitHubRateLimitError,
+    StarHistoryFetchError,
+)
 from .automation import run_sync
 from .process import build_json_payload
 

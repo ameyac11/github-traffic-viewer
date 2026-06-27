@@ -46,14 +46,16 @@
 - [🚨 The 14-Day Catch (And How We Fix It)](#-the-14-day-catch-and-how-we-fix-it)
 - [🛠️ Installation](#installation)
   - [🔑 Generating a GitHub Personal Access Token](#generating-a-github-personal-access-token)
-- [⌨️ The 3 Core CLI Commands](#the-3-core-cli-commands)
+- [⌨️ The 4 Core CLI Commands](#the-4-core-cli-commands)
   - [1️⃣ `gitlytics fetch` (Live Terminal Data)](#1-gitlytics-fetch-live-terminal-data)
   - [2️⃣ `gitlytics sync` (Background Database Cron)](#2-gitlytics-sync-background-database-cron)
   - [3️⃣ `gitlytics dashboard` (React Web UI)](#3-gitlytics-dashboard-react-web-ui)
+  - [4️⃣ `gitlytics stars` (Stargazer History)](#4-gitlytics-stars-stargazer-history)
 - [🐍 Native Python API](#native-python-api)
   - [1️⃣ `gitlytics.fetch_traffic()`](#1-gitlyticsfetch_traffic)
   - [2️⃣ `gitlytics.sync()`](#2-gitlyticssync)
   - [3️⃣ `gitlytics.serve_dashboard()`](#3-gitlyticsserve_dashboard)
+  - [4️⃣ `gitlytics.fetch_star_history()`](#4-gitlyticsfetch_star_history)
 - [📊 CSV Output Columns](#csv-output-columns)
 - [🌟 Show Your Support](#show-your-support)
 - [📄 License](#license)
@@ -102,9 +104,9 @@ To use the tools, you'll need a GitHub token.
 
 ---
 
-## ⌨️ The 3 Core CLI Commands
+## ⌨️ The 4 Core CLI Commands
 
-Gitlytics is powered by 3 massive command-line tools. You can run them anywhere in your terminal.
+Gitlytics is powered by 4 massive command-line tools. You can run them anywhere in your terminal.
 
 ### 1️⃣ `gitlytics fetch` (Live Terminal Data)
 Fetch your live 14-day traffic and print a beautiful ASCII table directly in your console.
@@ -137,6 +139,13 @@ gitlytics dashboard
 > ```bash
 > gitlytics dashboard --token "ghp_xxx" --data-dir "./data"
 > ```
+
+### 4️⃣ `gitlytics stars` (Stargazer History)
+Fetch the historical cumulative stargazer growth trajectory for a repository. 
+```bash
+# Fetch and print star history table
+gitlytics stars owner/repo --token ghp_your_token
+```
 
 ---
 
@@ -244,6 +253,29 @@ gitlytics.serve_dashboard(
 | `port` | `int` | `8000` | Port to run the web server on. |
 | `token` | `str` | `None` | Optional. Pre-authenticates the dashboard session to bypass the login screen. |
 | `data_dir` | `str` | `None` | Optional. Path to the folder containing your synced CSV or JSON databases. |
+
+---
+
+### 4️⃣ `gitlytics.fetch_star_history()`
+Fetches a list of cumulative star counts per date for a given repository. 
+
+```python
+import gitlytics
+
+# Fetch stargazer history timeline
+points = gitlytics.fetch_star_history(
+    owner="ameyac11",
+    repo="gitlytics",
+    token="ghp_your_token"  # Optional for public repos, recommended to avoid rate limits
+)
+```
+
+#### ⚙️ Parameters:
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `owner` | `str` | *Required* | Owner of the repository. |
+| `repo` | `str` | *Required* | Repository name. |
+| `token` | `str` | `None` | Optional GitHub Personal Access Token. |
 
 ---
 

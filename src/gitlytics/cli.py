@@ -9,6 +9,7 @@ import os
 
 # Import the three public functions that power every subcommand
 from gitlytics import fetch_traffic, sync, serve_dashboard
+from gitlytics.core import fetch_star_history
 
 
 def parse_repo_names(repo_arg: str):
@@ -75,6 +76,11 @@ def main():
     dash_parser.add_argument("--port", type=int, default=8000, help="Port to bind.")
     dash_parser.add_argument("-t", "--token", help="GitHub token for headless TV display.")
     dash_parser.add_argument("--data-dir", help="Inject historical CSV database.")
+
+    # ── STARS subcommand ───────────────────────────────────────────────────────
+    stars_parser = subparsers.add_parser("stars", help="Fetch sampled star history for a repo.")
+    stars_parser.add_argument("repo", help="Repository in 'owner/repo' form (e.g. ameyac11/gitlytics).")
+    stars_parser.add_argument("-t", "--token", help="GitHub Personal Access Token.")
 
     args = parser.parse_args()
 
@@ -152,6 +158,29 @@ def main():
             token=token,
             data_dir=args.data_dir
         )
+
+    elif args.command == "stars":
+        owner, _, repo = args.repo.partition("/")
+        if not owner or not repo:
+            print("❌ Error: repo must be in 'owner/repo' form.")
+            sys.exit(2)
+        try:
+            points = fetch_star_history(owner, repo, token)
+        except ValueError as exc:
+            # Bad input — non-zero exit so scripts can branch on it.
+            print(f"❌ Error: {exc}")
+            sys.exit(2)
+        except Exception as exc:
+            # Anything else (rate limit, network, etc.) — exit 1 so CI knows it failed.
+            print(f"❌ Error: {exc}")
+            sys.exit(1)
+        # Tabulate date + total stars.
+        print(f"{'DATE':<12} {'TOTAL STARS':>12}")
+        print("-" * 24)
+        for p in points:
+            print(f"{p['date']:<12} {p['total']:>12,}")
+        print("-" * 24)
+        print(f"{len(points)} sampled point(s)")
 
 
 if __name__ == "__main__":
