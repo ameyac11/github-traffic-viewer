@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Single source of truth for the package version.
 # Mirrors the version in pyproject.toml — keep them in sync.
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 __all__ = [
     "fetch_traffic",

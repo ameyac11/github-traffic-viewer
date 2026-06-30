@@ -1,19 +1,32 @@
 # Security Policy
 
-## Reporting a Vulnerability
-
-Please report security issues privately to **ameyaccod171@gmail.com** (do not open public GitHub issues for vulnerabilities).
-
-Include:
-- Affected component (backend, frontend, Python library)
-- Steps to reproduce
-- Impact assessment
-
-We aim to acknowledge reports within 72 hours.
-
 ## Supported Versions
+
+We actively support the latest release. Please update to the latest version to ensure you have the latest security patches.
 
 | Version | Supported |
 | ------- | --------- |
-| latest release | yes |
-| older releases | no |
+| 0.4.x   | :white_check_mark: Yes |
+| < 0.4.0 | :x: No |
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability within Gitlytics, please report it privately to avoid exposing users to risk before a fix is available.
+
+**Do not open a public GitHub issue for security vulnerabilities.**
+
+### How to Report
+
+Please report vulnerabilities privately using GitHub's built-in **Private Vulnerability Reporting** feature. You can find this by navigating to the "Security" tab of this repository on GitHub and selecting "Advisories" -> "Report a vulnerability".
+
+Please include the following details in your report:
+- **Affected Component**: CLI/Python library, frontend dashboard, or backend.
+- **Detailed Description**: A clear description of the vulnerability and its potential impact.
+- **Steps to Reproduce**: Step-by-step instructions or proof-of-concept (PoC) code to reproduce the issue.
+
+### Our Response Process
+
+1. **Acknowledgment**: We aim to acknowledge receipt of your report within 72 hours.
+2. **Investigation**: We will investigate the issue and determine the severity and impact.
+3. **Fix & Release**: If confirmed, we will work on a patch and release it in a new version as soon as possible.
+
